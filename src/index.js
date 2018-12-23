@@ -58,7 +58,7 @@ let interpolate = (string, context) => {
   return result;
 };
 
-function createRenderer({operators: mixinOps}) {
+function createRenderer({operators: mixinOps, builtins: moreBuiltins}) {
 
   // Object used to indicate deleteMarker
   let deleteMarker = {};
@@ -155,7 +155,7 @@ function createRenderer({operators: mixinOps}) {
   };
 
   operators.$map = (template, context) => {
-    EACH_RE = 'each\\(([a-zA-Z_][a-zA-Z0-9_]*)(,\\s*([a-zA-Z_][a-zA-Z0-9_]*))?\\)';
+    const EACH_RE = 'each\\(([a-zA-Z_][a-zA-Z0-9_]*)(,\\s*([a-zA-Z_][a-zA-Z0-9_]*))?\\)';
     checkUndefinedProperties(template, ['\\$map', EACH_RE]);
     let value = render(template['$map'], context);
     if (!isArray(value) && !isObject(value)) {
@@ -422,7 +422,7 @@ function createRenderer({operators: mixinOps}) {
     if (!test) {
       throw new TemplateError('top level keys of context must follow /[a-zA-Z_][a-zA-Z0-9_]*/');
     }
-    context = addBuiltins(Object.assign({}, {now: fromNow('0 seconds')}, context));
+    context = addBuiltins(Object.assign({}, {now: fromNow('0 seconds')}, moreBuiltins, context));
     let result = render(template, context);
     if (result === deleteMarker) {
       return null;
