@@ -327,7 +327,7 @@ function createRenderer({operators: mixinOps, builtins: moreBuiltins}) {
       .map(e => e[1]);
   };
 
-  const resolveKeyFromCtx = (key, ctx) => {
+  const resolveCtxKey = (key, ctx) => {
     if (isString(key)) {
       const v = ctx[key];
       if (v !== undefined) {
@@ -336,19 +336,17 @@ function createRenderer({operators: mixinOps, builtins: moreBuiltins}) {
     }
     return key;
   };
+  const renderCtxKey = (template, ctx) => render(resolveCtxKey(template, ctx), ctx);
   operators.$render = (template, context) => {
-    let childTemplate = resolveKeyFromCtx(template['$render'], context);
-
-    const childContext = Object.assign({}, context);
+    const childCtx = Object.assign({}, context);
     Object.keys(template).forEach(key => {
       if (key === '$render') {
         return;
       }
-      const inlineOrCtxValue = resolveKeyFromCtx(template[key], childContext);
-      childContext[key] = render(inlineOrCtxValue, childContext);
+      childCtx[key] = renderCtxKey(template[key], childCtx);
     });
 
-    return render(childTemplate, childContext);
+    return renderCtxKey(template['$render'], childCtx);
   };
 
   let render = (template, context) => {
