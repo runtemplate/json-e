@@ -325,6 +325,30 @@ operators.$sort = (template, context) => {
     .map(e => e[1]);
 };
 
+const resolveKeyFromCtx = (key, ctx) => {
+  if (isString(key)) {
+    const v = ctx[key];
+    if (v !== undefined) {
+      return v;
+    }
+  }
+  return key;
+};
+operators.$render = (template, context) => {
+  let childTemplate = resolveKeyFromCtx(template['$render'], context);
+
+  const childContext = Object.assign({}, context);
+  Object.keys(template).forEach(key => {
+    if (key === '$render') {
+      return;
+    }
+    const inlineOrCtxValue = resolveKeyFromCtx(template[key], childContext);
+    childContext[key] = render(inlineOrCtxValue, childContext);
+  });
+
+  return render(childTemplate, childContext);
+};
+
 let render = (template, context) => {
   if (isNumber(template) || isBool(template) || template === null) {
     return template;
