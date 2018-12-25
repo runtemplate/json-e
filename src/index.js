@@ -1,4 +1,4 @@
-var interpreter = require('./interpreter');
+var {createInterpreter, isEqual} = require('./interpreter');
 var fromNow = require('./from-now');
 var assert = require('assert');
 var stringify = require('json-stable-stringify');
@@ -27,39 +27,56 @@ let flattenDeep = (a) => {
   return Array.isArray(a) ? [].concat(...a.map(flattenDeep)) : a;
 };
 
-let interpolate = (string, context) => {
-  let result = '';
-  let remaining = string;
-  let offset;
-  while ((offset = remaining.search(/\$?\${/g)) !== -1) {
-    result += remaining.slice(0, offset);
+function createRenderer({operators: mixinOps, builtins: moreBuiltins, interpreterSetup}) {
+  // ==============================================================================================
+  const interpreter = createInterpreter(interpreterSetup);
 
-    if (remaining[offset+1] != '$') {
-      let v = interpreter.parseUntilTerminator(remaining.slice(offset), 2, '}', context);
-      if (isArray(v.result) || isObject(v.result)) {
-        let input = remaining.slice(offset + 2, offset + v.offset);
-        throw new TemplateError(`interpolation of '${input}' produced an array or object`);
+  const recursiveRender = (v, context) => {
+    if (isArray(v.result) || isObject(v.result)) {
+      const newV = render(v, context);
+      if (!isEqual(newV, v)) {
+        return recursiveRender(newV, context);
       }
-
-      // if it is null, result should just be appended with empty string
-      if (v.result === null) {
-        result += '';
-      } else {
-        result += v.result.toString();
-      }
-
-      remaining = remaining.slice(offset + v.offset + 1);
-    } else {
-      result += '${';
-      remaining = remaining.slice(offset + 3);
+      return newV;
     }
-  }
-  result += remaining;
-  return result;
-};
+    return v;
+  };
+  // ==============================================================================================
 
-function createRenderer({operators: mixinOps, builtins: moreBuiltins}) {
+  let interpolate = (string, context) => {
+    let result = '';
+    let remaining = string;
+    let offset;
+    while ((offset = remaining.search(/\$?\${/g)) !== -1) {
+      result += remaining.slice(0, offset);
+  
+      if (remaining[offset+1] != '$') {
+        let v = interpreter.parseUntilTerminator(remaining.slice(offset), 2, '}', context);
 
+        v = recursiveRender(v, context);
+
+        if (isArray(v.result) || isObject(v.result)) {
+          let input = remaining.slice(offset + 2, offset + v.offset);
+          throw new TemplateError(`interpolation of '${input}' produced an array or object`);
+        }
+  
+        // if it is null, result should just be appended with empty string
+        if (v.result === null) {
+          result += '';
+        } else {
+          result += v.result.toString();
+        }
+  
+        remaining = remaining.slice(offset + v.offset + 1);
+      } else {
+        result += '${';
+        remaining = remaining.slice(offset + 3);
+      }
+    }
+    result += remaining;
+    return result;
+  };
+  
   // Object used to indicate deleteMarker
   let deleteMarker = {};
 
@@ -327,6 +344,7 @@ function createRenderer({operators: mixinOps, builtins: moreBuiltins}) {
       .map(e => e[1]);
   };
 
+  // ==============================================================================================
   const resolveCtxKey = (key, ctx) => {
     if (isString(key)) {
       const v = ctx[key];
@@ -336,18 +354,29 @@ function createRenderer({operators: mixinOps, builtins: moreBuiltins}) {
     }
     return key;
   };
-  const renderCtxKey = (template, ctx) => render(resolveCtxKey(template, ctx), ctx);
   operators.$render = (template, context) => {
-    const childCtx = Object.assign({}, context);
+    // create isolated child context
+    const ctx = {};
+    // defaults
+    const defaults = template.defaults;
+    if (isObject(defaults)) {
+      Object.keys(defaults).forEach(key => {
+        ctx[key] = render(defaults[key], context);
+      });
+    }
+    // parent context
+    Object.assign(ctx, context);
+    // local props
     Object.keys(template).forEach(key => {
       if (key === '$render') {
         return;
       }
-      childCtx[key] = renderCtxKey(template[key], childCtx);
+      ctx[key] = resolveCtxKey(template[key], ctx);
     });
-
-    return renderCtxKey(template['$render'], childCtx);
+    // real render
+    return render(resolveCtxKey(template['$render'], ctx), ctx);
   };
+  // ==============================================================================================
 
   let render = (template, context) => {
     if (isNumber(template) || isBool(template) || template === null) {

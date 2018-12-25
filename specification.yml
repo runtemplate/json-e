@@ -5071,4 +5071,14 @@ title:    $render ctx is isolated
 template: [{ $render: 't1', x: 2 }, { $render: 't1' }]
 context:  { t1: '_${x}_', x: 1 }
 result:   ['_2_', '_1_']
+---
+title:    template in template
+template: { t1: { content: '${x}' }, $render: 't1', x: { $eval: 'y' } }
+context:  { y: 1 }
+result:   { content: '1' }
+---
+title:    defaults & inline template
+template: { $render: '${a} ${b}', defaults: { 'a': 2, 'b':2 }, extraProp: 'can' }
+context:  { a: 1 }
+result:   '1 2'
 ################################################################################

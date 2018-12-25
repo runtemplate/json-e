@@ -320,7 +320,9 @@ infixRules['in'] = (left, token, ctx) => {
   return right.some(r => isEqual(left, r));
 };
 
-module.exports = new PrattParser({
+const defaultSetupFn = ops => ops;
+
+exports.createInterpreter = (setupFn = defaultSetupFn) => new PrattParser(setupFn({
   ignore: '\\s+', // ignore all whitespace including \n
   patterns: {
     number:     '[0-9]+(?:\\.[0-9]+)?',
@@ -354,4 +356,6 @@ module.exports = new PrattParser({
   ],
   prefixRules,
   infixRules,
-});
+}));
+
+exports.isEqual = isEqual;
