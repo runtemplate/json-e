@@ -54,7 +54,7 @@ function createRenderer({operators: mixinOps, builtins: moreBuiltins = {}, inter
   const interpreter = createInterpreter(interpreterSetup);
 
   const recursiveRender = (v, context) => {
-    if (isArray(v.result) || isObject(v.result)) {
+    if (isArray(v) || isObject(v)) {
       const newV = render(v, context);
       if (!isEqual(newV, v)) {
         return recursiveRender(newV, context);
@@ -76,7 +76,7 @@ function createRenderer({operators: mixinOps, builtins: moreBuiltins = {}, inter
       if (remaining[offset+1] != '$') {
         let v = interpreter.parseUntilTerminator(remaining.slice(offset), 2, '}', context);
 
-        v = recursiveRender(v, context);
+        v.result = recursiveRender(v.result, context);
 
         if (isArray(v.result) || isObject(v.result)) {
           let input = remaining.slice(offset + 2, offset + v.offset);
