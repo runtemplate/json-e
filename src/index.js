@@ -27,8 +27,30 @@ let flattenDeep = (a) => {
   return Array.isArray(a) ? [].concat(...a.map(flattenDeep)) : a;
 };
 
+// <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+const mapContextValue = (v, ctx) => {
+  if (isString(v)) {
+    const ctxValue = ctx[v];
+    if (ctxValue !== undefined) {
+      return ctxValue;
+    }
+  }
+  return v;
+};
+const makeSubContext = (template, ctx, omitKeys) => {
+  ctx = Object.assign({}, template.defaults, ctx);
+  Object.keys(template).forEach(k => {
+    if (omitKeys && omitKeys.includes(k)) {
+      return;
+    }
+    ctx[k] = mapContextValue(template[k], ctx);
+  });
+  return ctx;
+};
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 function createRenderer({operators: mixinOps, builtins: moreBuiltins, interpreterSetup}) {
-  // ==============================================================================================
+  // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
   const interpreter = createInterpreter(interpreterSetup);
 
   const recursiveRender = (v, context) => {
@@ -41,7 +63,7 @@ function createRenderer({operators: mixinOps, builtins: moreBuiltins, interprete
     }
     return v;
   };
-  // ==============================================================================================
+  // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
   let interpolate = (string, context) => {
     let result = '';
@@ -344,39 +366,14 @@ function createRenderer({operators: mixinOps, builtins: moreBuiltins, interprete
       .map(e => e[1]);
   };
 
-  // ==============================================================================================
-  const resolveCtxKey = (key, ctx) => {
-    if (isString(key)) {
-      const v = ctx[key];
-      if (v !== undefined) {
-        return v;
-      }
-    }
-    return key;
-  };
+  // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
   operators.$render = (template, context) => {
-    // create isolated child context
-    const ctx = {};
-    // defaults
-    const defaults = template.defaults;
-    if (isObject(defaults)) {
-      Object.keys(defaults).forEach(key => {
-        ctx[key] = render(defaults[key], context);
-      });
-    }
-    // parent context
-    Object.assign(ctx, context);
-    // local props
-    Object.keys(template).forEach(key => {
-      if (key === '$render') {
-        return;
-      }
-      ctx[key] = resolveCtxKey(template[key], ctx);
-    });
+    // create isolated sub context
+    const ctx = makeSubContext(template, context, ['$render']);
     // real render
-    return render(resolveCtxKey(template['$render'], ctx), ctx);
+    return render(mapContextValue(template['$render'], ctx), ctx);
   };
-  // ==============================================================================================
+  // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
   let render = (template, context) => {
     if (isNumber(template) || isBool(template) || template === null) {
@@ -460,4 +457,9 @@ function createRenderer({operators: mixinOps, builtins: moreBuiltins, interprete
 }
 
 module.exports = createRenderer({});
-module.exports.createRenderer = createRenderer;
+
+Object.assign(module.exports, {
+  createRenderer,
+  mapContextValue,
+  makeSubContext,
+});
