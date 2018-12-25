@@ -49,7 +49,7 @@ const makeSubContext = (template, ctx, omitKeys) => {
 };
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-function createRenderer({operators: mixinOps, builtins: moreBuiltins, interpreterSetup}) {
+function createRenderer({operators: mixinOps, builtins: moreBuiltins = {}, interpreterSetup}) {
   // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
   const interpreter = createInterpreter(interpreterSetup);
 
@@ -63,6 +63,7 @@ function createRenderer({operators: mixinOps, builtins: moreBuiltins, interprete
     }
     return v;
   };
+  moreBuiltins.recursiveRender = recursiveRender;
   // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
   let interpolate = (string, context) => {
