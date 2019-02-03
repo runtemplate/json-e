@@ -1,1 +1,6 @@
-src/
+.github
+demo
+interpreter
+jsone
+newsfragments
+test

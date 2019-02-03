@@ -1,4 +1,4 @@
-var interpreter = require('./interpreter');
+var {createInterpreter, isEqual} = require('./interpreter');
 var fromNow = require('./from-now');
 var stringify = require('json-stable-stringify');
 var {
@@ -25,6 +25,12 @@ function checkUndefinedProperties(template, allowed) {
 let flattenDeep = (a) => {
   return Array.isArray(a) ? [].concat(...a.map(flattenDeep)) : a;
 };
+
+function createRenderer({operators: mixinOps, builtins: moreBuiltins = {}, interpreterSetup}) {
+  // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+  const interpreter = createInterpreter(interpreterSetup);
+  // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+  /* eslint-disable indent */
 
 let interpolate = (string, context) => {
   let result = '';
@@ -383,15 +389,38 @@ let render = (template, context) => {
   return result;
 };
 
-module.exports = (template, context = {}) => {
+// <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+moreBuiltins.render = (v, context, recursively) => {
+  if (isArray(v) || isObject(v)) {
+    const newV = render(v, context);
+    if (recursively && !isEqual(newV, v)) {
+      return moreBuiltins.render(newV, context);
+    }
+    return newV;
+  }
+  return v;
+};
+
+if (mixinOps) {
+  Object.assign(operators, mixinOps);
+}
+// <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+// final template renderer function
+return (template, context = {}) => {
   let test = Object.keys(context).every(v => /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(v));
   if (!test) {
     throw new TemplateError('top level keys of context must follow /[a-zA-Z_][a-zA-Z0-9_]*/');
   }
-  context = addBuiltins(Object.assign({}, {now: fromNow('0 seconds')}, context));
+  context = addBuiltins(Object.assign({}, {now: fromNow('0 seconds')}, moreBuiltins, context));
   let result = render(template, context);
   if (result === deleteMarker) {
     return null;
   }
   return result;
 };
+}
+
+module.exports = createRenderer({});
+
+Object.assign(module.exports, {createRenderer});

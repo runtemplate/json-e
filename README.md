@@ -1,3 +1,35 @@
+### Fork from https://github.com/taskcluster/json-e
+
+```js
+import { createRenderer } from 'json-e-x'
+
+const renderTemplate = createRenderer({
+  builtins: { 
+    // add more builtins here 
+  },
+  operators: {
+    $newOperator: (template, context) => {
+      return context.render(template, ctx)
+    },
+  },
+  interpreterSetup: conf => {
+    conf.prefixRules.identifier = (token, ctx) => {
+      if (token.value in ctx.context) {
+        return ctx.context[token.value]
+      }
+      // mute unknown context value error
+      return `\${${token.value}}`
+    }
+    return conf
+  },
+})
+
+var template = { a: { $eval: "foo.bar" } }
+var context = { foo: { bar: "zoo" } }
+console.log(renderTemplate(template, context));
+```
+
+
 * [Full documentation](https://taskcluster.github.io/json-e)
 
 # JSON-e
